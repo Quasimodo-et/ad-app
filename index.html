@@ -893,7 +893,7 @@
       <!-- 数据备份 -->
       <div class="card">
         <h2>💾 数据备份</h2>
-        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。</p>
+        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。<br>手机上导出时，会弹出系统分享面板，选择"存储到文件"即可保存。</p>
         <button type="button" id="exportBtn" class="btn-secondary">📤 导出备份文件（AD-data.json）</button>
       </div>
 
@@ -2803,16 +2803,45 @@
           }
         }
 
-        // 5. 普通下载：保存到浏览器默认下载文件夹
+        // 5. 保存/下载备份文件（先试手机通用的"系统分享"方式）
         const blob = new Blob([json], { type: "application/json" });
+        const fileName = "AD-data.json";
+
+        // 苹果/安卓手机：调用系统"分享"面板，
+        // 可以存到"文件"App、发微信、发邮件等，最稳妥
+        if (navigator.canShare && navigator.share) {
+          const file = new File([blob], fileName, { type: "application/json" });
+          if (navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: "AD-data 备份",
+                text: "特应性皮炎记录备份文件"
+              });
+              showMessage("已弹出分享面板，请选择"存储到文件"或发送给电脑", "success");
+              return;
+            } catch (error) {
+              // 用户点了"取消"就静默结束；其他错误继续走下面的普通下载
+              if (error.name === "AbortError") {
+                return;
+              }
+              console.warn("分享失败，改用普通下载：", error);
+            }
+          }
+        }
+
+        // 6. 普通下载：电脑浏览器/安卓走这里，保存到下载文件夹
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = "AD-data.json";
+        link.download = fileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        // 延迟释放，避免苹果浏览器还没开始下载就被取消
+        setTimeout(function () {
+          URL.revokeObjectURL(url);
+        }, 10000);
 
         showMessage("备份文件 AD-data.json 已下载（共 " + total + " 条记录），请到浏览器下载文件夹查看", "success");
       } catch (error) {
