@@ -983,7 +983,7 @@
       <!-- 数据备份 -->
       <div class="card">
         <h2>💾 数据备份</h2>
-        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。<br>手机上导出时，会弹出系统分享面板，选择“存储到文件”即可保存。</p>
+        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。<br>手机上导出时，会弹出系统分享面板，选择“存储到文件”即可保存。<br><strong>当前版本：v9</strong></p>
         <button type="button" id="exportBtn" class="btn-secondary">📤 导出备份文件（AD-data.json）</button>
       </div>
 
@@ -1142,7 +1142,7 @@
 
   <footer>
     数据只保存在你自己的浏览器里，不会上传到任何服务器。<br>
-    <span style="color:#9ab3bf; font-size:12px;">版本 v8</span>
+    <span style="color:#9ab3bf; font-size:12px;">版本 v9</span>
   </footer>
 
   <!-- Chart.js 图表库：通过 CDN 引入，需要联网才能加载 -->
@@ -2904,6 +2904,9 @@
 
     // 主函数：读取全部数据，打包成 JSON，保存为 AD-data.json
     async function exportAllData() {
+      // 先给一个即时提示：只要脚本在运行，点下去立刻就有反应
+      showMessage("正在打包数据，请稍候…", "success");
+
       if (!db) {
         showMessage("数据库还没准备好，请稍后再试", "error");
         return;
@@ -3023,7 +3026,7 @@
         }
       } catch (error) {
         console.error(error);
-        showMessage("导出失败，请按 F12 查看控制台报错", "error");
+        showMessage("导出出错：" + (error && error.message ? error.message : "未知错误") + "，请把这段提示发给我", "error");
       }
     }
 
