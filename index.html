@@ -983,8 +983,8 @@
       <!-- 数据备份 -->
       <div class="card">
         <h2>💾 数据备份</h2>
-        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。<br>手机上导出时，会弹出系统分享面板，选择“存储到文件”即可保存。<br><strong>当前版本：v9</strong></p>
-        <button type="button" id="exportBtn" class="btn-secondary">📤 导出备份文件（AD-data.json）</button>
+        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。<br>手机上导出时，会弹出系统分享面板，选择“存储到文件”即可保存。<br><strong>当前版本：v10</strong></p>
+        <button type="button" id="exportBtn" class="btn-secondary" onclick="if (!window.__mainExportBound) { window.__fallbackExport(); }">📤 导出备份文件（AD-data.json）</button>
       </div>
 
       <!-- 编辑提示条（平时隐藏，点"编辑"后出现） -->
@@ -1142,7 +1142,7 @@
 
   <footer>
     数据只保存在你自己的浏览器里，不会上传到任何服务器。<br>
-    <span style="color:#9ab3bf; font-size:12px;">版本 v9</span>
+    <span style="color:#9ab3bf; font-size:12px;">版本 v10</span>
   </footer>
 
   <!-- Chart.js 图表库：通过 CDN 引入，需要联网才能加载 -->
@@ -2901,6 +2901,8 @@
 
     // 导出按钮
     document.getElementById("exportBtn").addEventListener("click", exportAllData);
+    // 标记主脚本已成功运行到这一行（应急导出脚本会检查这个标记）
+    window.__mainExportBound = true;
 
     // 主函数：读取全部数据，打包成 JSON，保存为 AD-data.json
     async function exportAllData() {
@@ -3043,6 +3045,105 @@
         });
       });
     }
+  </script>
+
+  <script>
+    // ============================================================
+    // 应急导出脚本（完全独立，不依赖上面的主脚本）
+    // 作用：万一主脚本没运行，导出按钮也照样能用。
+    // 原理：按钮上写了一句 onclick，主脚本正常时 __mainExportBound
+    // 会被设为 true，按钮就不走这里；主脚本挂了，就走这里的备份逻辑。
+    // ============================================================
+
+    window.__mainExportBound = false; // 初始为 false，主脚本成功运行后会改成 true
+
+    // 应急导出：自己打开数据库、自己打包、自己弹分享面板或复制
+    window.__fallbackExport = async function () {
+      try {
+        // 1. 独立打开 IndexedDB 数据库（不依赖主脚本里的 db 变量）
+        const db2 = await new Promise(function (resolve, reject) {
+          const req = indexedDB.open("ad_tracker", 2);
+          req.onsuccess = function () { resolve(req.result); };
+          req.onerror = function () { reject(req.error); };
+        });
+
+        // 2. 读取所有表的数据
+        const storeNames = ["daily_logs", "lesion_records", "medication_logs", "supplement_logs", "food_logs", "factor_logs"];
+        const data = {};
+        for (let i = 0; i < storeNames.length; i++) {
+          data[storeNames[i]] = await new Promise(function (resolve, reject) {
+            const tx = db2.transaction(storeNames[i], "readonly");
+            const req2 = tx.objectStore(storeNames[i]).getAll();
+            req2.onsuccess = function () { resolve(req2.result); };
+            req2.onerror = function () { reject(req2.error); };
+          });
+        }
+
+        // 3. 打包成备份内容
+        const backup = {
+          app: "ad_tracker",
+          exportedAt: new Date().toISOString(),
+          version: 2,
+          data: data
+        };
+        const json = JSON.stringify(backup, null, 2);
+
+        // 4. 先试系统分享面板（手机）
+        if (navigator.canShare && navigator.share) {
+          try {
+            const file = new File([json], "AD-data.json", { type: "application/json" });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: "AD-data 备份",
+                text: "特应性皮炎记录备份文件"
+              });
+              return; // 分享面板已弹出，任务完成
+            }
+          } catch (error) {
+            if (error.name === "AbortError") {
+              return; // 用户取消了分享
+            }
+            console.warn("应急分享失败：", error);
+          }
+        }
+
+        // 5. 再试"复制备份内容"（手机电脑都支持）
+        let copied = false;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            await navigator.clipboard.writeText(json);
+            copied = true;
+          } catch (error) {
+            console.warn("剪贴板 API 失败：", error);
+          }
+        }
+        if (!copied) {
+          try {
+            const ta = document.createElement("textarea");
+            ta.value = json;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            copied = document.execCommand("copy");
+            document.body.removeChild(ta);
+          } catch (error) {
+            console.warn("备用复制失败：", error);
+          }
+        }
+
+        // 6. 告诉用户结果（用系统弹窗，最保险）
+        if (copied) {
+          alert("备份内容已复制！请打开备忘录或微信，长按粘贴保存。");
+        } else {
+          alert("暂时无法自动保存备份。请改用电脑打开本网页，点导出另存为。");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("导出出错：" + (error && error.message ? error.message : "未知错误"));
+      }
+    };
   </script>
 </body>
 </html>
