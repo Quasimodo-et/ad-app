@@ -1,0 +1,27 @@
+{
+  "name": "特应性皮炎记录工具",
+  "short_name": "皮炎记录",
+  "description": "记录皮肤状态、用药、饮食和影响因素，发现复发规律",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f6fafc",
+  "theme_color": "#2c8cb0",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

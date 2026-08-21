@@ -1,0 +1,2839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>特应性皮炎记录工具</title>
+  <!-- PWA 配置：让网页可以"安装"到手机/电脑桌面 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2c8cb0">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <!-- 苹果手机专用图标：180x180，添加到主屏幕时使用 -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="皮炎记录">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <style>
+    /* ===== 全局样式 ===== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+      background: linear-gradient(160deg, #e4f0f6 0%, #f6fafc 100%);
+      min-height: 100vh;
+      color: #2b3a42;
+      padding: 28px 16px 70px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    header h1 {
+      font-size: 26px;
+      color: #1f6f8b;
+      letter-spacing: 1px;
+    }
+
+    header .subtitle {
+      margin-top: 6px;
+      color: #6b8a96;
+      font-size: 15px;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* ===== 顶部标签页 ===== */
+    .tabs {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 10px 26px;
+      border: 1px solid #cfe0e8;
+      border-radius: 999px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #ffffff;
+      color: #1f6f8b;
+      transition: all 0.15s;
+    }
+
+    .tab.active {
+      background: #2c8cb0;
+      color: #ffffff;
+      border-color: #2c8cb0;
+    }
+
+    .tab:hover:not(.active) {
+      background: #eef7fa;
+    }
+
+    /* ===== 每日提醒开关 ===== */
+    .reminder-tip {
+      font-size: 13px;
+      color: #7a929c;
+      margin-bottom: 14px;
+      line-height: 1.6;
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 15px;
+      color: #445c66;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+      flex: 0 0 48px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider2 {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #cfe0e8;
+      border-radius: 999px;
+      transition: background 0.2s;
+    }
+
+    .slider2::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      top: 3px;
+      background: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .switch input:checked + .slider2 {
+      background: #2c8cb0;
+    }
+
+    .switch input:checked + .slider2::before {
+      transform: translateX(22px);
+    }
+
+    .reminder-status {
+      font-size: 13px;
+      color: #7a929c;
+    }
+
+    /* ===== 卡片样式 ===== */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(31, 111, 139, 0.08);
+      padding: 20px 22px;
+      margin-bottom: 18px;
+    }
+
+    .card h2 {
+      font-size: 17px;
+      color: #1f6f8b;
+      margin-bottom: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group > label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 15px;
+      color: #445c66;
+    }
+
+    /* ===== 输入框样式 ===== */
+    input[type="date"],
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cfe0e8;
+      border-radius: 10px;
+      font-size: 15px;
+      background: #fbfdfe;
+      color: #2b3a42;
+    }
+
+    input[type="date"]:focus,
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #2c8cb0;
+      box-shadow: 0 0 0 3px rgba(44, 140, 176, 0.15);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #2c8cb0;
+      cursor: pointer;
+    }
+
+    .slider-value {
+      color: #1f6f8b;
+      font-weight: bold;
+    }
+
+    /* ===== 单选 / 复选样式 ===== */
+    .radio-options {
+      display: flex;
+      gap: 10px;
+    }
+
+    .radio-options label,
+    .inline-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: #f3f8fa;
+      border: 1px solid #cfe0e8;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .radio-options input,
+    .inline-check input,
+    .checkbox-grid input {
+      accent-color: #2c8cb0;
+    }
+
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 10px;
+    }
+
+    .checkbox-grid label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 12px;
+      background: #f3f8fa;
+      border: 1px solid #cfe0e8;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.15s;
+    }
+
+    .checkbox-grid label:hover {
+      background: #e7f2f7;
+    }
+
+    /* ===== 动态添加的行 ===== */
+    .entry-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .entry-row input[type="text"],
+    .entry-row select {
+      flex: 1 1 130px;
+      min-width: 0;
+    }
+
+    .entry-row .inline-check {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      padding: 8px 12px;
+    }
+
+    .btn-delete {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      border: none;
+      border-radius: 50%;
+      background: #fdeaea;
+      color: #c0392b;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-delete:hover {
+      background: #f8d4d4;
+    }
+
+    /* ===== 按钮样式 ===== */
+    .btn-secondary {
+      width: 100%;
+      padding: 10px;
+      font-size: 15px;
+      color: #1f6f8b;
+      background: #eef7fa;
+      border: 1px dashed #2c8cb0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-secondary:hover {
+      background: #dceef5;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffffff;
+      background: #2c8cb0;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(44, 140, 176, 0.3);
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #1f6f8b;
+    }
+
+    /* ===== 提示消息 ===== */
+    .message {
+      text-align: center;
+      padding: 13px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      display: none;
+      font-size: 15px;
+    }
+
+    .message.success {
+      background: #e6f7ee;
+      color: #1e7d4d;
+    }
+
+    .message.error {
+      background: #fdeeee;
+      color: #b23b3b;
+    }
+
+    /* ===== 编辑提示条 ===== */
+    .edit-hint {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: #fff7e6;
+      border: 1px solid #f2d28f;
+      color: #8a6d1a;
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .btn-cancel-edit {
+      border: 1px solid #d9b45c;
+      background: #ffffff;
+      color: #8a6d1a;
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-cancel-edit:hover {
+      background: #fdf3dd;
+    }
+
+    /* ===== 历史记录列表 ===== */
+    .history-summary {
+      text-align: center;
+      color: #6b8a96;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .record-card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(31, 111, 139, 0.08);
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+
+    .record-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .record-date {
+      font-size: 17px;
+      font-weight: bold;
+      color: #1f6f8b;
+    }
+
+    .record-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-edit,
+    .btn-delete-record {
+      border-radius: 999px;
+      padding: 7px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid;
+      transition: background 0.15s;
+    }
+
+    .btn-edit {
+      background: #eef7fa;
+      color: #1f6f8b;
+      border-color: #bcd9e4;
+    }
+
+    .btn-edit:hover {
+      background: #dceef5;
+    }
+
+    .btn-delete-record {
+      background: #fdeeee;
+      color: #c0392b;
+      border-color: #f0c4c4;
+    }
+
+    .btn-delete-record:hover {
+      background: #f8d4d4;
+    }
+
+    .record-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .record-item {
+      background: #f3f8fa;
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+
+    .record-item .label {
+      display: block;
+      font-size: 12px;
+      color: #7a929c;
+      margin-bottom: 3px;
+    }
+
+    .record-item .value {
+      font-size: 15px;
+      color: #2b3a42;
+    }
+
+    .record-line {
+      font-size: 14px;
+      color: #445c66;
+      margin: 6px 0;
+      line-height: 1.5;
+    }
+
+    .record-line .line-label {
+      color: #1f6f8b;
+      font-weight: bold;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 50px 20px;
+      color: #7a929c;
+    }
+
+    .empty-state p {
+      margin-bottom: 18px;
+    }
+
+    .empty-state .btn-primary {
+      width: auto;
+      padding: 10px 32px;
+      font-size: 15px;
+    }
+
+    /* ===== 统计分析样式 ===== */
+    .period-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .period-btn {
+      padding: 7px 18px;
+      border: 1px solid #cfe0e8;
+      border-radius: 999px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #ffffff;
+      color: #1f6f8b;
+      transition: all 0.15s;
+    }
+
+    .period-btn.active {
+      background: #2c8cb0;
+      color: #ffffff;
+      border-color: #2c8cb0;
+    }
+
+    .period-btn:hover:not(.active) {
+      background: #eef7fa;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 300px;
+    }
+
+    /* 饼图 + 人体图 左右布局 */
+    .site-chart-layout {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .site-chart-layout .chart-wrap {
+      flex: 1 1 250px;
+      min-width: 0;
+      height: 280px;
+    }
+
+    .body-map-wrap {
+      flex: 1 1 200px;
+      min-width: 0;
+      text-align: center;
+    }
+
+    .body-map-wrap svg {
+      width: 100%;
+      max-width: 150px;
+      height: auto;
+    }
+
+    .body-legend {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #7a929c;
+    }
+
+    .legend-gradient {
+      width: 90px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(to right, #f9d9d2, #b02a2a);
+    }
+
+    .body-map-note {
+      font-size: 12px;
+      color: #7a929c;
+      margin-top: 4px;
+    }
+
+    .stats-note {
+      text-align: center;
+      color: #6b8a96;
+      margin: 12px 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ===== 诱因分析样式 ===== */
+    .trigger-explainer {
+      font-size: 14px;
+      color: #445c66;
+      line-height: 1.7;
+      padding-left: 0;
+      list-style-position: inside;
+    }
+
+    .trigger-explainer li {
+      margin-bottom: 5px;
+    }
+
+    .trigger-warning {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #8a6d1a;
+      background: #fff7e6;
+      border-radius: 10px;
+      padding: 10px 12px;
+      line-height: 1.6;
+    }
+
+    .trigger-item {
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(31, 111, 139, 0.07);
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+
+    .trigger-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .trigger-rank {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #eef7fa;
+      color: #2c8cb0;
+      border-radius: 50%;
+      font-size: 15px;
+      font-weight: bold;
+      flex: 0 0 34px;
+    }
+
+    .trigger-name {
+      font-size: 16px;
+      font-weight: bold;
+      color: #2b3a42;
+    }
+
+    .trigger-type {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      color: #ffffff;
+    }
+
+    .type-food {
+      background: #f2994a;
+    }
+
+    .type-med {
+      background: #2c8cb0;
+    }
+
+    .type-sup {
+      background: #9b51e0;
+    }
+
+    .trigger-diff {
+      margin-left: auto;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .diff-positive {
+      color: #c0392b;
+    }
+
+    .diff-negative {
+      color: #1e7d4d;
+    }
+
+    .diff-neutral {
+      color: #7a929c;
+    }
+
+    .trigger-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bar-label {
+      flex: 0 0 88px;
+      font-size: 13px;
+      color: #445c66;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 10px;
+      background: #eef2f5;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+    }
+
+    .bar-exposure {
+      background: #eb5757;
+    }
+
+    .bar-baseline {
+      background: #2c8cb0;
+    }
+
+    .bar-value {
+      flex: 0 0 42px;
+      text-align: right;
+      font-size: 13px;
+      color: #445c66;
+    }
+
+    .trigger-detail {
+      font-size: 13px;
+      color: #7a929c;
+      line-height: 1.5;
+    }
+
+    footer {
+      text-align: center;
+      color: #93aab4;
+      font-size: 13px;
+      margin-top: 26px;
+    }
+
+    @media (max-width: 520px) {
+      .record-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🧴 特应性皮炎记录工具</h1>
+    <p class="subtitle">记录、回顾、发现规律</p>
+  </header>
+
+  <main>
+
+    <!-- 顶部标签页：每日打卡 / 历史记录 -->
+    <nav class="tabs">
+      <button type="button" id="tabCheckin" class="tab active">📝 每日打卡</button>
+      <button type="button" id="tabHistory" class="tab">📚 历史记录</button>
+      <button type="button" id="tabStats" class="tab">📊 统计分析</button>
+      <button type="button" id="tabTriggers" class="tab">🔍 诱因分析</button>
+    </nav>
+
+    <!-- 提示消息（打卡和历史页共用） -->
+    <div id="message" class="message"></div>
+
+    <!-- ==================== 每日打卡视图 ==================== -->
+    <section id="viewCheckin">
+
+      <!-- 每日提醒 -->
+      <div class="card">
+        <h2>🔔 每日提醒</h2>
+        <p class="reminder-tip">每天 20:00 提醒你记录皮肤状态。提醒需要本页面在浏览器中保持打开才会触发。</p>
+        <div class="switch-row">
+          <span>开启每日提醒</span>
+          <label class="switch">
+            <input type="checkbox" id="reminderToggle">
+            <span class="slider2"></span>
+          </label>
+        </div>
+        <p class="reminder-status" id="reminderStatus">未开启</p>
+      </div>
+
+      <!-- 日期选择 -->
+      <div class="card">
+        <h2>📅 选择日期</h2>
+        <input type="date" id="dateInput">
+      </div>
+
+      <!-- 皮肤状态 -->
+      <div class="card">
+        <h2>🌡️ 皮肤状态</h2>
+
+        <div class="form-group">
+          <label>是否复发？</label>
+          <div class="radio-options">
+            <label><input type="radio" name="relapse" value="true"> 是</label>
+            <label><input type="radio" name="relapse" value="false" checked> 否</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>总体严重程度：<span class="slider-value" id="severityValue">0</span> / 10</label>
+          <input type="range" id="severitySlider" min="0" max="10" value="0">
+        </div>
+
+        <div class="form-group">
+          <label>瘙痒程度：<span class="slider-value" id="itchValue">0</span> / 10</label>
+          <input type="range" id="itchSlider" min="0" max="10" value="0">
+        </div>
+      </div>
+
+      <!-- 复发部位（多选） -->
+      <div class="card">
+        <h2>📍 复发部位（可多选）</h2>
+        <div class="checkbox-grid">
+          <label><input type="checkbox" class="site-checkbox" value="面部"> 面部</label>
+          <label><input type="checkbox" class="site-checkbox" value="颈部"> 颈部</label>
+          <label><input type="checkbox" class="site-checkbox" value="肘窝"> 肘窝</label>
+          <label><input type="checkbox" class="site-checkbox" value="腘窝"> 腘窝</label>
+          <label><input type="checkbox" class="site-checkbox" value="手部"> 手部</label>
+          <label><input type="checkbox" class="site-checkbox" value="躯干"> 躯干</label>
+          <label><input type="checkbox" class="site-checkbox" value="四肢"> 四肢</label>
+        </div>
+      </div>
+
+      <!-- 天气与宠物（影响因素） -->
+      <div class="card">
+        <h2>🌦️ 天气与宠物</h2>
+
+        <div class="form-group">
+          <label>所在地点（城市，可选）：</label>
+          <input type="text" id="locationInput" placeholder="如：上海、杭州">
+        </div>
+
+        <div class="form-group">
+          <label>天气状况：</label>
+          <select id="weatherType">
+            <option value="晴">晴</option>
+            <option value="多云">多云</option>
+            <option value="阴">阴</option>
+            <option value="小雨">小雨</option>
+            <option value="中雨">中雨</option>
+            <option value="大雨">大雨</option>
+            <option value="雪">雪</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>温度（℃，可选）：</label>
+          <input type="number" id="weatherTemp" placeholder="如：28" min="-50" max="60">
+        </div>
+
+        <div class="form-group">
+          <label>家里或接触的环境有没有猫狗？</label>
+          <select id="petStatus">
+            <option value="无猫狗">无猫狗</option>
+            <option value="有猫">有猫</option>
+            <option value="有狗">有狗</option>
+            <option value="猫和狗都有">猫和狗都有</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 用药打卡 -->
+      <div class="card">
+        <h2>💊 用药打卡</h2>
+        <div id="medicationContainer"></div>
+        <button type="button" id="addMedicationBtn" class="btn-secondary">＋ 添加药物</button>
+      </div>
+
+      <!-- 补剂打卡 -->
+      <div class="card">
+        <h2>🧪 补剂打卡</h2>
+        <div id="supplementContainer"></div>
+        <button type="button" id="addSupplementBtn" class="btn-secondary">＋ 添加补剂</button>
+      </div>
+
+      <!-- 饮食记录 -->
+      <div class="card">
+        <h2>🍽️ 饮食记录</h2>
+        <div id="foodContainer"></div>
+        <button type="button" id="addFoodBtn" class="btn-secondary">＋ 添加食物</button>
+      </div>
+
+      <!-- 数据备份 -->
+      <div class="card">
+        <h2>💾 数据备份</h2>
+        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。</p>
+        <button type="button" id="exportBtn" class="btn-secondary">📤 导出备份文件（AD-data.json）</button>
+      </div>
+
+      <!-- 编辑提示条（平时隐藏，点"编辑"后出现） -->
+      <div id="editHint" class="edit-hint" style="display:none;">
+        <span>✏️ 正在编辑 <strong id="editHintDate"></strong> 的记录，修改后点击保存即可更新。</span>
+        <button type="button" id="cancelEditBtn" class="btn-cancel-edit">取消编辑</button>
+      </div>
+
+      <button type="button" id="saveBtn" class="btn-primary">💾 保存今日打卡</button>
+    </section>
+
+    <!-- ==================== 历史记录视图 ==================== -->
+    <section id="viewHistory" style="display:none;">
+      <p class="history-summary" id="historyCount"></p>
+      <div id="historyList"></div>
+    </section>
+
+    <!-- ==================== 统计分析视图 ==================== -->
+    <section id="viewStats" style="display:none;">
+
+      <!-- 严重程度趋势（折线图，可切换时间段） -->
+      <div class="card">
+        <h2>📈 皮肤严重程度趋势</h2>
+        <div class="period-buttons">
+          <button type="button" class="period-btn active" data-period="30">最近一个月</button>
+          <button type="button" class="period-btn" data-period="180">最近六个月</button>
+          <button type="button" class="period-btn" data-period="365">全年</button>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="severityChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 复发部位分布（饼图 + 人体图） -->
+      <div class="card">
+        <h2>📍 复发部位分布</h2>
+        <div class="site-chart-layout">
+          <div class="chart-wrap">
+            <canvas id="siteChart"></canvas>
+          </div>
+          <div class="body-map-wrap">
+            <!-- 正面人体图：每个部位一个区域，颜色由 JS 按复发次数填充 -->
+            <svg id="bodyMap" viewBox="0 0 159 452" role="img" aria-label="人体复发部位分布图">
+              <!-- 用户提供的身体示意图（线条已按界面配色处理） -->
+              <image href="body-map.png" x="0" y="0" width="159" height="452" style="pointer-events:none;"></image>
+
+              <!-- 面部（不包括头顶） -->
+              <ellipse id="body-face" cx="83" cy="80" rx="19" ry="22" fill="transparent">
+                <title>面部：0 次</title>
+              </ellipse>
+
+              <!-- 颈部 -->
+              <rect id="body-neck" x="73" y="98" width="21" height="20" rx="5" fill="transparent">
+                <title>颈部：0 次</title>
+              </rect>
+
+              <!-- 躯干 -->
+              <ellipse id="body-torso" cx="80" cy="195" rx="35" ry="75" fill="transparent">
+                <title>躯干：0 次</title>
+              </ellipse>
+
+              <!-- 左臂 -->
+              <ellipse id="body-leftArm" cx="35" cy="222" rx="10" ry="45" fill="transparent">
+                <title>四肢：0 次</title>
+              </ellipse>
+
+              <!-- 右臂 -->
+              <ellipse id="body-rightArm" cx="128" cy="222" rx="10" ry="45" fill="transparent">
+                <title>四肢：0 次</title>
+              </ellipse>
+
+              <!-- 左手 -->
+              <ellipse id="body-leftHand" cx="32" cy="270" rx="8" ry="10" fill="transparent">
+                <title>手部：0 次</title>
+              </ellipse>
+
+              <!-- 右手 -->
+              <ellipse id="body-rightHand" cx="127" cy="270" rx="8" ry="10" fill="transparent">
+                <title>手部：0 次</title>
+              </ellipse>
+
+              <!-- 左腿 -->
+              <ellipse id="body-leftLeg" cx="63" cy="349" rx="14" ry="55" fill="transparent">
+                <title>四肢：0 次</title>
+              </ellipse>
+
+              <!-- 右腿 -->
+              <ellipse id="body-rightLeg" cx="103" cy="349" rx="14" ry="55" fill="transparent">
+                <title>四肢：0 次</title>
+              </ellipse>
+
+              <!-- 左肘窝（示意位置） -->
+              <circle id="body-leftElbow" cx="32" cy="225" r="7" fill="transparent" stroke="#c9a89a" stroke-width="1" stroke-dasharray="3 2">
+                <title>肘窝：0 次</title>
+              </circle>
+
+              <!-- 右肘窝（示意位置） -->
+              <circle id="body-rightElbow" cx="135" cy="225" r="7" fill="transparent" stroke="#c9a89a" stroke-width="1" stroke-dasharray="3 2">
+                <title>肘窝：0 次</title>
+              </circle>
+
+              <!-- 左腘窝（膝盖后方，正面用虚线圆示意） -->
+              <circle id="body-leftKnee" cx="72" cy="385" r="8" fill="transparent" stroke="#c9a89a" stroke-width="1" stroke-dasharray="3 2">
+                <title>腘窝：0 次</title>
+              </circle>
+
+              <!-- 右腘窝（膝盖后方，正面用虚线圆示意） -->
+              <circle id="body-rightKnee" cx="94" cy="385" r="8" fill="transparent" stroke="#c9a89a" stroke-width="1" stroke-dasharray="3 2">
+                <title>腘窝：0 次</title>
+              </circle>
+            </svg>
+            <div class="body-legend">
+              <span>少</span>
+              <div class="legend-gradient"></div>
+              <span>多</span>
+            </div>
+            <p class="body-map-note">颜色越深 = 复发次数越多</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 每月复发次数（柱状图） -->
+      <div class="card">
+        <h2>🗓️ 每月复发次数</h2>
+        <div class="chart-wrap">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+      </div>
+
+      <p class="stats-note" id="statsNote"></p>
+    </section>
+
+    <!-- ==================== 诱因分析视图 ==================== -->
+    <section id="viewTriggers" style="display:none;">
+
+      <!-- 规则说明 -->
+      <div class="card">
+        <h2>❓ 怎么看这个分析</h2>
+        <ul class="trigger-explainer">
+          <li>对每种食物 / 药物 / 补剂，统计"使用后 1–3 天内复发"的比例。</li>
+          <li>同时统计"没使用的日子里复发"的比例，作为对照。</li>
+          <li>差值 = 使用后复发率 − 未使用复发率，差值越大越可疑。</li>
+          <li>每种东西至少使用过 3 次，才会出现在排行榜里。</li>
+          <li>只统计有打卡记录的日期；使用后连续几天都没打卡的话，这次不算。</li>
+        </ul>
+        <p class="trigger-warning">⚠️ 提醒：这是相关性统计，不是因果关系。食物和复发之间可能有其他原因，请结合医生建议判断。</p>
+      </div>
+
+      <p class="history-summary">可疑诱因排行榜（按差值从高到低）</p>
+      <div id="triggerList"></div>
+      <p class="stats-note" id="triggerNote"></p>
+    </section>
+
+  </main>
+
+  <footer>数据只保存在你自己的浏览器里，不会上传到任何服务器。</footer>
+
+  <!-- Chart.js 图表库：通过 CDN 引入，需要联网才能加载 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <script>
+    // ============================================================
+    // 第一部分：打开 IndexedDB 数据库
+    // IndexedDB 是浏览器自带的"数据库"，数据存在这台电脑的这个浏览器里
+    // ============================================================
+
+    const DB_NAME = "ad_tracker";   // 数据库名字
+    const DB_VERSION = 2;           // 数据库版本号（以后加新表时要 +1，浏览器会自动升级）
+    let db = null;                  // 保存"已打开的数据库"的全局变量
+
+    const openRequest = indexedDB.open(DB_NAME, DB_VERSION);
+
+    // 第一次创建数据库（或版本升级）时执行，在这里建"表"
+    // 注意：每次升级时先检查"表是否已存在"，已存在的不要重复创建，
+    // 否则浏览器会报错。这样以后加新表，只需把 DB_VERSION 加 1
+    openRequest.onupgradeneeded = function (event) {
+      db = event.target.result;
+
+      // 表 1：daily_logs（每日总记录，一天一条，日期是主键）
+      if (!db.objectStoreNames.contains("daily_logs")) {
+        db.createObjectStore("daily_logs", { keyPath: "date" });
+      }
+
+      // 表 2：lesion_records（复发部位，一天可以多条）
+      if (!db.objectStoreNames.contains("lesion_records")) {
+        const lesionStore = db.createObjectStore("lesion_records", { keyPath: "id", autoIncrement: true });
+        lesionStore.createIndex("by_date", "date");
+      }
+
+      // 表 3：medication_logs（用药打卡）
+      if (!db.objectStoreNames.contains("medication_logs")) {
+        const medicationStore = db.createObjectStore("medication_logs", { keyPath: "id", autoIncrement: true });
+        medicationStore.createIndex("by_date", "date");
+      }
+
+      // 表 4：supplement_logs（补剂打卡）
+      if (!db.objectStoreNames.contains("supplement_logs")) {
+        const supplementStore = db.createObjectStore("supplement_logs", { keyPath: "id", autoIncrement: true });
+        supplementStore.createIndex("by_date", "date");
+      }
+
+      // 表 5：food_logs（饮食记录）
+      if (!db.objectStoreNames.contains("food_logs")) {
+        const foodStore = db.createObjectStore("food_logs", { keyPath: "id", autoIncrement: true });
+        foodStore.createIndex("by_date", "date");
+      }
+
+      // 表 6：factor_logs（天气、宠物等影响因素，一天可以多条）
+      if (!db.objectStoreNames.contains("factor_logs")) {
+        const factorStore = db.createObjectStore("factor_logs", { keyPath: "id", autoIncrement: true });
+        factorStore.createIndex("by_date", "date");
+      }
+
+      console.log("数据库创建成功！");
+    };
+
+    // 数据库打开成功后执行
+    openRequest.onsuccess = function (event) {
+      db = event.target.result;
+      console.log("数据库连接成功！");
+    };
+
+    // 数据库打开失败时执行（正常浏览器不会发生）
+    openRequest.onerror = function (event) {
+      console.error("数据库打开失败：", event.target.error);
+    };
+
+    // ============================================================
+    // 第二部分：页面初始化（默认日期、滑块显示）
+    // ============================================================
+
+    // 把日期输入框默认设为"今天"（用本地时间，避免时区问题）
+    function getToday() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return year + "-" + month + "-" + day;
+    }
+    document.getElementById("dateInput").value = getToday();
+
+    // 两个滑块：拖动时，旁边的数字跟着变
+    const severitySlider = document.getElementById("severitySlider");
+    const severityValue = document.getElementById("severityValue");
+    const itchSlider = document.getElementById("itchSlider");
+    const itchValue = document.getElementById("itchValue");
+
+    severitySlider.addEventListener("input", function () {
+      severityValue.textContent = severitySlider.value;
+    });
+    itchSlider.addEventListener("input", function () {
+      itchValue.textContent = itchSlider.value;
+    });
+
+    // ============================================================
+    // 第三部分：标签页切换（每日打卡 / 历史记录）
+    // ============================================================
+
+    function showView(viewName) {
+      const isCheckin = viewName === "checkin";
+      const isHistory = viewName === "history";
+      const isStats = viewName === "stats";
+      const isTriggers = viewName === "triggers";
+
+      // 显示/隐藏四个视图
+      document.getElementById("viewCheckin").style.display = isCheckin ? "block" : "none";
+      document.getElementById("viewHistory").style.display = isHistory ? "block" : "none";
+      document.getElementById("viewStats").style.display = isStats ? "block" : "none";
+      document.getElementById("viewTriggers").style.display = isTriggers ? "block" : "none";
+
+      // 高亮对应的标签
+      document.getElementById("tabCheckin").classList.toggle("active", isCheckin);
+      document.getElementById("tabHistory").classList.toggle("active", isHistory);
+      document.getElementById("tabStats").classList.toggle("active", isStats);
+      document.getElementById("tabTriggers").classList.toggle("active", isTriggers);
+
+      // 切到历史页时重新读取记录；切到统计页时重新画图
+      if (isHistory) {
+        renderHistory();
+      }
+      if (isStats) {
+        renderStats();
+      }
+      if (isTriggers) {
+        renderTriggers();
+      }
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.getElementById("tabCheckin").addEventListener("click", function () {
+      showView("checkin");
+    });
+    document.getElementById("tabHistory").addEventListener("click", function () {
+      showView("history");
+    });
+    document.getElementById("tabStats").addEventListener("click", function () {
+      showView("stats");
+    });
+    document.getElementById("tabTriggers").addEventListener("click", function () {
+      showView("triggers");
+    });
+
+    // ============================================================
+    // 第四部分：动态添加"用药 / 补剂 / 食物"记录行
+    // ============================================================
+
+    // 添加一行用药记录
+    // 参数都可以不填：不填就是空白行；编辑时填入旧数据
+    function addMedicationRow(name, used, dose) {
+      const container = document.getElementById("medicationContainer");
+      const row = document.createElement("div");
+      row.className = "entry-row";
+      row.innerHTML =
+        '<input type="text" class="med-name" placeholder="药物名称（如：地奈德乳膏）">' +
+        '<label class="inline-check"><input type="checkbox" class="med-used"> 已使用</label>' +
+        '<input type="text" class="med-dose" placeholder="剂量/用法（如：每日两次）">' +
+        '<button type="button" class="btn-delete" title="删除这一条">×</button>';
+
+      // 如果有旧数据，就填进去
+      if (name) {
+        row.querySelector(".med-name").value = name;
+      }
+      if (used) {
+        row.querySelector(".med-used").checked = true;
+      }
+      if (dose) {
+        row.querySelector(".med-dose").value = dose;
+      }
+
+      // 点击 × 删除这一行
+      row.querySelector(".btn-delete").addEventListener("click", function () {
+        row.remove();
+      });
+
+      container.appendChild(row);
+    }
+
+    // 添加一行补剂记录（结构和用药基本一样）
+    function addSupplementRow(name, taken, dose) {
+      const container = document.getElementById("supplementContainer");
+      const row = document.createElement("div");
+      row.className = "entry-row";
+      row.innerHTML =
+        '<input type="text" class="sup-name" placeholder="补剂名称（如：维生素 D）">' +
+        '<label class="inline-check"><input type="checkbox" class="sup-taken"> 已服用</label>' +
+        '<input type="text" class="sup-dose" placeholder="剂量（如：400 IU）">' +
+        '<button type="button" class="btn-delete" title="删除这一条">×</button>';
+
+      if (name) {
+        row.querySelector(".sup-name").value = name;
+      }
+      if (taken) {
+        row.querySelector(".sup-taken").checked = true;
+      }
+      if (dose) {
+        row.querySelector(".sup-dose").value = dose;
+      }
+
+      row.querySelector(".btn-delete").addEventListener("click", function () {
+        row.remove();
+      });
+
+      container.appendChild(row);
+    }
+
+    // 添加一行食物记录（餐次用下拉框选择）
+    function addFoodRow(name, mealType, amount) {
+      const container = document.getElementById("foodContainer");
+      const row = document.createElement("div");
+      row.className = "entry-row";
+      row.innerHTML =
+        '<input type="text" class="food-name" placeholder="食物名称（如：牛奶）">' +
+        '<select class="food-meal">' +
+        '  <option value="早餐">早餐</option>' +
+        '  <option value="午餐">午餐</option>' +
+        '  <option value="晚餐">晚餐</option>' +
+        '  <option value="加餐">加餐</option>' +
+        '</select>' +
+        '<input type="text" class="food-amount" placeholder="分量（如：1 杯）">' +
+        '<button type="button" class="btn-delete" title="删除这一条">×</button>';
+
+      if (name) {
+        row.querySelector(".food-name").value = name;
+      }
+      if (mealType) {
+        row.querySelector(".food-meal").value = mealType;
+      }
+      if (amount) {
+        row.querySelector(".food-amount").value = amount;
+      }
+
+      row.querySelector(".btn-delete").addEventListener("click", function () {
+        row.remove();
+      });
+
+      container.appendChild(row);
+    }
+
+    // 页面打开时，先给每类记录准备好一行（方便直接填写）
+    addMedicationRow();
+    addSupplementRow();
+    addFoodRow();
+
+    // 三个"添加"按钮的点击事件
+    document.getElementById("addMedicationBtn").addEventListener("click", function () {
+      addMedicationRow();
+    });
+    document.getElementById("addSupplementBtn").addEventListener("click", function () {
+      addSupplementRow();
+    });
+    document.getElementById("addFoodBtn").addEventListener("click", function () {
+      addFoodRow();
+    });
+
+    // ============================================================
+    // 第五部分：保存数据到 IndexedDB
+    // ============================================================
+
+    // 当前是否在"编辑已有记录"的状态（null 表示不是编辑，是新增）
+    let editingDate = null;
+
+    // 保存按钮
+    document.getElementById("saveBtn").addEventListener("click", saveAll);
+
+    // 主保存函数：先收集页面上的所有数据，再写进数据库
+    async function saveAll() {
+      // 数据库还没连上时，先提示用户
+      if (!db) {
+        showMessage("数据库还没准备好，请稍后再点一次", "error");
+        return;
+      }
+
+      // 1. 读取日期（必填）
+      const date = document.getElementById("dateInput").value;
+      if (!date) {
+        showMessage("请先选择日期", "error");
+        return;
+      }
+
+      // 2. 读取"是否复发"单选按钮
+      const relapse = document.querySelector('input[name="relapse"]:checked').value === "true";
+
+      // 3. 读取两个滑块的值（转成数字）
+      const overallSeverity = Number(severitySlider.value);
+      const itchLevel = Number(itchSlider.value);
+
+      // 4. 收集勾选的复发部位（勾了几个就生成几条）
+      const siteRecords = [];
+      document.querySelectorAll(".site-checkbox:checked").forEach(function (checkbox) {
+        siteRecords.push({ date: date, site: checkbox.value });
+      });
+
+      // 5. 收集用药记录（名称没填的行直接跳过）
+      const medicationRecords = [];
+      document.querySelectorAll("#medicationContainer .entry-row").forEach(function (row) {
+        const name = row.querySelector(".med-name").value.trim();
+        if (name === "") {
+          return;
+        }
+        medicationRecords.push({
+          date: date,
+          name: name,
+          used: row.querySelector(".med-used").checked,
+          dose: row.querySelector(".med-dose").value.trim()
+        });
+      });
+
+      // 6. 收集补剂记录
+      const supplementRecords = [];
+      document.querySelectorAll("#supplementContainer .entry-row").forEach(function (row) {
+        const name = row.querySelector(".sup-name").value.trim();
+        if (name === "") {
+          return;
+        }
+        supplementRecords.push({
+          date: date,
+          name: name,
+          taken: row.querySelector(".sup-taken").checked,
+          dose: row.querySelector(".sup-dose").value.trim()
+        });
+      });
+
+      // 7. 收集食物记录
+      const foodRecords = [];
+      document.querySelectorAll("#foodContainer .entry-row").forEach(function (row) {
+        const name = row.querySelector(".food-name").value.trim();
+        if (name === "") {
+          return;
+        }
+        foodRecords.push({
+          date: date,
+          name: name,
+          mealType: row.querySelector(".food-meal").value,
+          amount: row.querySelector(".food-amount").value.trim()
+        });
+      });
+
+      // 8. 收集天气和宠物记录（都存进 factor_logs 表）
+      const factorRecords = [];
+
+      // 天气：地点（可选）+ 天气状况 + 温度（可选），拼成一段文字
+      const location = document.getElementById("locationInput").value.trim();
+      const weatherType = document.getElementById("weatherType").value;
+      const weatherTemp = document.getElementById("weatherTemp").value.trim();
+
+      let weatherDetail = weatherType; // 至少会有天气状况
+      if (location !== "") {
+        weatherDetail = location + "，" + weatherDetail;
+      }
+      if (weatherTemp !== "") {
+        weatherDetail = weatherDetail + "，" + weatherTemp + "℃";
+      }
+      factorRecords.push({ date: date, factorType: "天气", detail: weatherDetail });
+
+      // 宠物：家里或接触的环境有没有猫狗
+      factorRecords.push({
+        date: date,
+        factorType: "宠物",
+        detail: document.getElementById("petStatus").value
+      });
+
+      // 9. 组装"每日总记录"（这一天只能有一条）
+      const dailyLog = {
+        date: date,
+        relapse: relapse,
+        overallSeverity: overallSeverity,
+        itchLevel: itchLevel
+      };
+
+      // 10. 写入数据库
+      try {
+        await writeAllToDB(date, {
+          dailyLog: dailyLog,
+          siteRecords: siteRecords,
+          medicationRecords: medicationRecords,
+          supplementRecords: supplementRecords,
+          foodRecords: foodRecords,
+          factorRecords: factorRecords
+        });
+
+        // 如果是编辑旧记录，保存成功后退出编辑状态
+        if (editingDate) {
+          const edited = editingDate;
+          editingDate = null;
+          document.getElementById("editHint").style.display = "none";
+          showMessage("已更新 " + edited + " 的记录", "success");
+        } else {
+          showMessage("保存成功！今天的记录已存入浏览器。", "success");
+        }
+      } catch (error) {
+        console.error(error);
+        showMessage("保存失败：请按 F12 打开开发者工具看报错", "error");
+      }
+    }
+
+    // 把收集好的数据写进数据库
+    // 用"一个事务"来写：要么全部成功，要么全部失败，不会写一半
+    function writeAllToDB(date, data) {
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction(
+          ["daily_logs", "lesion_records", "medication_logs", "supplement_logs", "food_logs", "factor_logs"],
+          "readwrite"
+        );
+
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error); };
+
+        (async function () {
+          // 第一步：把这一天旧的子表记录全部删掉
+          // 这样同一天再次保存时，不会出现新旧数据叠在一起
+          const subStores = ["lesion_records", "medication_logs", "supplement_logs", "food_logs", "factor_logs"];
+          for (let i = 0; i < subStores.length; i++) {
+            await clearStoreByDate(tx, subStores[i], date);
+          }
+
+          // 第二步：写入主表（日期相同会覆盖旧记录）
+          tx.objectStore("daily_logs").put(data.dailyLog);
+
+          // 第三步：写入各子表（每条都是新记录，自动编号）
+          data.siteRecords.forEach(function (record) {
+            tx.objectStore("lesion_records").add(record);
+          });
+          data.medicationRecords.forEach(function (record) {
+            tx.objectStore("medication_logs").add(record);
+          });
+          data.supplementRecords.forEach(function (record) {
+            tx.objectStore("supplement_logs").add(record);
+          });
+          data.foodRecords.forEach(function (record) {
+            tx.objectStore("food_logs").add(record);
+          });
+          data.factorRecords.forEach(function (record) {
+            tx.objectStore("factor_logs").add(record);
+          });
+        })().catch(reject);
+      });
+    }
+
+    // 删除某一天在某张表里的所有记录
+    // 原理：用"by_date"索引找到这一天的所有记录，一条一条删除
+    function clearStoreByDate(tx, storeName, date) {
+      return new Promise(function (resolve, reject) {
+        const store = tx.objectStore(storeName);
+        const index = store.index("by_date");
+        const range = IDBKeyRange.only(date);
+        const request = index.openCursor(range);
+
+        request.onsuccess = function (event) {
+          const cursor = event.target.result;
+          if (cursor) {
+            cursor.delete();    // 删除当前这一条
+            cursor.continue();  // 继续找下一条
+          } else {
+            resolve();          // 没有更多记录了，完成
+          }
+        };
+
+        request.onerror = function (event) {
+          reject(event.target.error);
+        };
+      });
+    }
+
+    // ============================================================
+    // 第六部分：历史记录（读取、展示、删除）
+    // ============================================================
+
+    // 读取某张表里的全部记录（简单封装，返回 Promise）
+    function getAllFromStore(storeName) {
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction(storeName, "readonly");
+        const request = tx.objectStore(storeName).getAll();
+        request.onsuccess = function () {
+          resolve(request.result);
+        };
+        request.onerror = function () {
+          reject(request.error);
+        };
+      });
+    }
+
+    // 读取所有记录，整理成"按日期分组"的列表，并按日期倒序排列
+    async function loadAllRecords() {
+      const dailies = await getAllFromStore("daily_logs");
+      const lesions = await getAllFromStore("lesion_records");
+      const meds = await getAllFromStore("medication_logs");
+      const sups = await getAllFromStore("supplement_logs");
+      const foods = await getAllFromStore("food_logs");
+      const factors = await getAllFromStore("factor_logs");
+
+      // 日期格式是 年-月-日 字符串，直接比较就能倒序排
+      dailies.sort(function (a, b) {
+        return b.date.localeCompare(a.date);
+      });
+
+      // 把每条每日记录和它当天的子记录拼在一起
+      return dailies.map(function (daily) {
+        return {
+          date: daily.date,
+          relapse: daily.relapse,
+          overallSeverity: daily.overallSeverity,
+          itchLevel: daily.itchLevel,
+          sites: lesions.filter(function (r) { return r.date === daily.date; }),
+          medications: meds.filter(function (r) { return r.date === daily.date; }),
+          supplements: sups.filter(function (r) { return r.date === daily.date; }),
+          foods: foods.filter(function (r) { return r.date === daily.date; }),
+          factors: factors.filter(function (r) { return r.date === daily.date; })
+        };
+      });
+    }
+
+    // 渲染历史记录列表
+    async function renderHistory() {
+      const listEl = document.getElementById("historyList");
+
+      if (!db) {
+        listEl.innerHTML = '<p class="empty-state">数据库还没准备好，请稍后重试。</p>';
+        return;
+      }
+
+      listEl.innerHTML = '<p class="empty-state">正在读取记录……</p>';
+
+      try {
+        const records = await loadAllRecords();
+        document.getElementById("historyCount").textContent = "共 " + records.length + " 条记录";
+
+        // 没有记录时，显示提示和跳转按钮
+        if (records.length === 0) {
+          const emptyDiv = document.createElement("div");
+          emptyDiv.className = "empty-state";
+
+          const tip = document.createElement("p");
+          tip.textContent = "还没有任何记录，先去做一次每日打卡吧！";
+          emptyDiv.appendChild(tip);
+
+          const goBtn = document.createElement("button");
+          goBtn.className = "btn-primary";
+          goBtn.textContent = "去每日打卡";
+          goBtn.addEventListener("click", function () {
+            showView("checkin");
+          });
+          emptyDiv.appendChild(goBtn);
+
+          listEl.innerHTML = "";
+          listEl.appendChild(emptyDiv);
+          return;
+        }
+
+        // 有记录：清空列表，逐条生成卡片
+        listEl.innerHTML = "";
+        records.forEach(function (record) {
+          listEl.appendChild(buildRecordCard(record));
+        });
+      } catch (error) {
+        console.error(error);
+        listEl.innerHTML = '<p class="empty-state">读取记录失败，请按 F12 查看控制台报错。</p>';
+      }
+    }
+
+    // 生成一条记录的卡片（含编辑、删除按钮）
+    function buildRecordCard(record) {
+      const card = document.createElement("div");
+      card.className = "record-card";
+
+      // 头部：日期 + 编辑/删除按钮
+      const header = document.createElement("div");
+      header.className = "record-header";
+
+      const dateEl = document.createElement("span");
+      dateEl.className = "record-date";
+      dateEl.textContent = record.date;
+      header.appendChild(dateEl);
+
+      const actions = document.createElement("div");
+      actions.className = "record-actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "btn-edit";
+      editBtn.textContent = "编辑";
+      editBtn.addEventListener("click", function () {
+        populateCheckin(record); // 编辑：打开打卡页并自动填充
+      });
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-delete-record";
+      deleteBtn.textContent = "删除";
+      deleteBtn.addEventListener("click", function () {
+        deleteRecord(record.date);
+      });
+
+      actions.appendChild(editBtn);
+      actions.appendChild(deleteBtn);
+      header.appendChild(actions);
+      card.appendChild(header);
+
+      // 三个主要数字
+      const grid = document.createElement("div");
+      grid.className = "record-grid";
+      grid.appendChild(recordItem("是否复发", record.relapse ? "是" : "否"));
+
+      const severityText = (record.overallSeverity == null ? "—" : record.overallSeverity) + "/10";
+      grid.appendChild(recordItem("严重程度", severityText));
+
+      const itchText = (record.itchLevel == null ? "—" : record.itchLevel) + "/10";
+      grid.appendChild(recordItem("瘙痒程度", itchText));
+      card.appendChild(grid);
+
+      // 复发部位
+      const siteText = record.sites.length > 0
+        ? record.sites.map(function (s) { return s.site; }).join("、")
+        : "无";
+      card.appendChild(recordLine("复发部位", siteText));
+
+      // 用药
+      const medText = record.medications.map(function (m) {
+        let text = m.name;
+        text += m.used ? "（已使用）" : "（未使用）";
+        if (m.dose) {
+          text += "，" + m.dose;
+        }
+        return text;
+      }).join("；");
+      card.appendChild(recordLine("用药", medText || "无"));
+
+      // 补剂
+      const supText = record.supplements.map(function (s) {
+        let text = s.name;
+        text += s.taken ? "（已服用）" : "（未服用）";
+        if (s.dose) {
+          text += "，" + s.dose;
+        }
+        return text;
+      }).join("；");
+      card.appendChild(recordLine("补剂", supText || "无"));
+
+      // 食物
+      const foodText = record.foods.map(function (f) {
+        let text = f.name;
+        if (f.mealType) {
+          text += "（" + f.mealType;
+          if (f.amount) {
+            text += "，" + f.amount;
+          }
+          text += "）";
+        }
+        return text;
+      }).join("；");
+      card.appendChild(recordLine("食物", foodText || "无"));
+
+      // 天气和宠物（额外展示，方便对照）
+      const factorText = record.factors.map(function (f) {
+        return f.factorType + "：" + f.detail;
+      }).join("；");
+      card.appendChild(recordLine("天气/宠物", factorText || "未记录"));
+
+      return card;
+    }
+
+    // 生成"标签 + 数值"的小块（历史卡片里用）
+    function recordItem(label, value) {
+      const div = document.createElement("div");
+      div.className = "record-item";
+
+      const labelEl = document.createElement("span");
+      labelEl.className = "label";
+      labelEl.textContent = label;
+
+      const valueEl = document.createElement("span");
+      valueEl.className = "value";
+      valueEl.textContent = value;
+
+      div.appendChild(labelEl);
+      div.appendChild(valueEl);
+      return div;
+    }
+
+    // 生成一行"标题：内容"（历史卡片里用）
+    function recordLine(label, text) {
+      const div = document.createElement("div");
+      div.className = "record-line";
+
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "line-label";
+      labelSpan.textContent = label + "：";
+
+      div.appendChild(labelSpan);
+      div.appendChild(document.createTextNode(text));
+      return div;
+    }
+
+    // 删除某一天的全部记录（主表 + 所有子表）
+    async function deleteRecord(date) {
+      const ok = confirm("确定要删除 " + date + " 的全部记录吗？\n删除后无法恢复。");
+      if (!ok) {
+        return;
+      }
+
+      if (!db) {
+        showMessage("数据库还没准备好", "error");
+        return;
+      }
+
+      try {
+        await deleteByDate(date);
+        showMessage("已删除 " + date + " 的记录", "success");
+        await renderHistory(); // 删除后重新显示列表
+      } catch (error) {
+        console.error(error);
+        showMessage("删除失败，请按 F12 查看控制台报错", "error");
+      }
+    }
+
+    // 在数据库里删除某一天的所有记录
+    function deleteByDate(date) {
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction(
+          ["daily_logs", "lesion_records", "medication_logs", "supplement_logs", "food_logs", "factor_logs"],
+          "readwrite"
+        );
+
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error); };
+
+        (async function () {
+          // 主表：按日期主键直接删除（daily_logs 没有 by_date 索引，所以单独处理）
+          tx.objectStore("daily_logs").delete(date);
+
+          // 子表：通过 by_date 索引一条一条删
+          const subStores = ["lesion_records", "medication_logs", "supplement_logs", "food_logs", "factor_logs"];
+          for (let i = 0; i < subStores.length; i++) {
+            await clearStoreByDate(tx, subStores[i], date);
+          }
+        })().catch(reject);
+      });
+    }
+
+    // ============================================================
+    // 第七部分：编辑（打开打卡页并自动填充旧数据）
+    // ============================================================
+
+    // 点"编辑"后调用：切换到打卡页，把这一天的旧数据填回表单
+    function populateCheckin(record) {
+      // 1. 切到打卡视图
+      showView("checkin");
+
+      // 2. 日期
+      document.getElementById("dateInput").value = record.date;
+
+      // 3. 是否复发（单选按钮）
+      document.querySelectorAll('input[name="relapse"]').forEach(function (radio) {
+        radio.checked = (radio.value === String(record.relapse));
+      });
+
+      // 4. 两个滑块
+      severitySlider.value = record.overallSeverity == null ? 0 : record.overallSeverity;
+      severityValue.textContent = severitySlider.value;
+      itchSlider.value = record.itchLevel == null ? 0 : record.itchLevel;
+      itchValue.textContent = itchSlider.value;
+
+      // 5. 复发部位（勾选旧数据里的部位）
+      const siteSet = {};
+      record.sites.forEach(function (s) {
+        siteSet[s.site] = true;
+      });
+      document.querySelectorAll(".site-checkbox").forEach(function (checkbox) {
+        checkbox.checked = !!siteSet[checkbox.value];
+      });
+
+      // 6. 用药（先清空，再按旧数据重新生成行）
+      document.getElementById("medicationContainer").innerHTML = "";
+      if (record.medications.length === 0) {
+        addMedicationRow();
+      } else {
+        record.medications.forEach(function (m) {
+          addMedicationRow(m.name, m.used, m.dose);
+        });
+      }
+
+      // 7. 补剂（同上）
+      document.getElementById("supplementContainer").innerHTML = "";
+      if (record.supplements.length === 0) {
+        addSupplementRow();
+      } else {
+        record.supplements.forEach(function (s) {
+          addSupplementRow(s.name, s.taken, s.dose);
+        });
+      }
+
+      // 8. 食物（同上）
+      document.getElementById("foodContainer").innerHTML = "";
+      if (record.foods.length === 0) {
+        addFoodRow();
+      } else {
+        record.foods.forEach(function (f) {
+          addFoodRow(f.name, f.mealType, f.amount);
+        });
+      }
+
+      // 9. 天气和宠物（从 factor_logs 里找回填）
+      const weatherRecord = record.factors.find(function (f) {
+        return f.factorType === "天气";
+      });
+      const petRecord = record.factors.find(function (f) {
+        return f.factorType === "宠物";
+      });
+
+      // 天气：把存好的文字拆回 地点 / 天气 / 温度
+      if (weatherRecord) {
+        const weatherTypes = ["晴", "多云", "阴", "小雨", "中雨", "大雨", "雪", "其他"];
+        const parts = weatherRecord.detail.split("，");
+        let location = "";
+        let weatherType = "";
+        let temp = "";
+
+        // 找到天气词的位置，它前面是地点，它后面是温度
+        const typeIndex = parts.findIndex(function (p) {
+          return weatherTypes.indexOf(p) !== -1;
+        });
+
+        if (typeIndex !== -1) {
+          weatherType = parts[typeIndex];
+          location = parts.slice(0, typeIndex).join("，");
+          if (parts[typeIndex + 1]) {
+            temp = parts[typeIndex + 1].replace("℃", "").trim();
+          }
+        } else {
+          weatherType = "其他"; // 解析不出来时兜底
+        }
+
+        document.getElementById("locationInput").value = location;
+        document.getElementById("weatherType").value = weatherType;
+        document.getElementById("weatherTemp").value = temp;
+      }
+
+      // 宠物：直接选回对应的选项
+      if (petRecord) {
+        const petSelect = document.getElementById("petStatus");
+        const petOptions = ["无猫狗", "有猫", "有狗", "猫和狗都有"];
+        if (petOptions.indexOf(petRecord.detail) !== -1) {
+          petSelect.value = petRecord.detail;
+        }
+      }
+
+      // 10. 显示"正在编辑"提示条
+      editingDate = record.date;
+      document.getElementById("editHintDate").textContent = record.date;
+      document.getElementById("editHint").style.display = "flex";
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // 取消编辑：把表单恢复成"新打卡"的样子
+    function resetCheckinForm() {
+      editingDate = null;
+      document.getElementById("editHint").style.display = "none";
+      document.getElementById("dateInput").value = getToday();
+
+      // 复位单选按钮
+      document.querySelectorAll('input[name="relapse"]').forEach(function (radio) {
+        radio.checked = (radio.value === "false");
+      });
+
+      // 复位滑块
+      severitySlider.value = 0;
+      severityValue.textContent = "0";
+      itchSlider.value = 0;
+      itchValue.textContent = "0";
+
+      // 复位复发部位
+      document.querySelectorAll(".site-checkbox").forEach(function (checkbox) {
+        checkbox.checked = false;
+      });
+
+      // 复位动态行（每类留一行空白的）
+      document.getElementById("medicationContainer").innerHTML = "";
+      document.getElementById("supplementContainer").innerHTML = "";
+      document.getElementById("foodContainer").innerHTML = "";
+      addMedicationRow();
+      addSupplementRow();
+      addFoodRow();
+
+      // 复位天气和宠物
+      document.getElementById("locationInput").value = "";
+      document.getElementById("weatherType").value = "晴";
+      document.getElementById("weatherTemp").value = "";
+      document.getElementById("petStatus").value = "无猫狗";
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // 取消编辑按钮
+    document.getElementById("cancelEditBtn").addEventListener("click", resetCheckinForm);
+
+    // ============================================================
+    // 第八部分：统计分析（Chart.js 图表）
+    // ============================================================
+
+    // 三个图表的实例（用来在重画之前销毁旧图表）
+    let severityChart = null;
+    let siteChart = null;
+    let monthlyChart = null;
+
+    // 统计页用到的数据缓存（每次切到统计页时重新读取）
+    let statsDailies = null;   // 所有每日记录（按日期升序）
+    let statsSites = null;     // 所有复发部位记录
+
+    // 把 Date 对象转成 "年-月-日" 字符串
+    function dateToStr(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return year + "-" + month + "-" + day;
+    }
+
+    // 统计页主函数：读取数据，然后画三张图
+    async function renderStats() {
+      const noteEl = document.getElementById("statsNote");
+
+      if (!db) {
+        noteEl.textContent = "数据库还没准备好，请稍后重试。";
+        return;
+      }
+
+      // Chart.js 需要联网加载；如果没加载成功，给用户明确提示
+      if (typeof Chart === "undefined") {
+        noteEl.textContent = "图表库（Chart.js）加载失败，请检查网络连接后刷新页面。";
+        return;
+      }
+
+      try {
+        const dailies = await getAllFromStore("daily_logs");
+        const sites = await getAllFromStore("lesion_records");
+
+        // 一条记录都没有：清空图表并提示
+        if (dailies.length === 0) {
+          destroyAllCharts();
+          noteEl.textContent = "还没有数据，先去每日打卡记录几天，再来这里看趋势吧！";
+          return;
+        }
+
+        // 按日期升序排好，方便画折线图
+        statsDailies = dailies.slice().sort(function (a, b) {
+          return a.date.localeCompare(b.date);
+        });
+        statsSites = sites;
+        noteEl.textContent = "";
+
+        updateSeverityChart(getCurrentPeriod());
+        updateSiteChart();
+        updateMonthlyChart();
+      } catch (error) {
+        console.error(error);
+        noteEl.textContent = "读取数据失败，请按 F12 查看控制台报错。";
+      }
+    }
+
+    // 当前选中的时间段（按钮上的 data-period，单位：天）
+    function getCurrentPeriod() {
+      const activeBtn = document.querySelector(".period-btn.active");
+      return activeBtn ? Number(activeBtn.dataset.period) : 30;
+    }
+
+    // 折线图：最近 N 天的严重程度
+    function updateSeverityChart(days) {
+      const noteEl = document.getElementById("statsNote");
+
+      // 计算截止日期（今天往前推 days 天）
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      const cutoffStr = dateToStr(cutoff);
+
+      // 只保留这段时间里的记录
+      const filtered = statsDailies.filter(function (d) {
+        return d.date >= cutoffStr;
+      });
+
+      // 先销毁旧图表，避免重复创建
+      if (severityChart) {
+        severityChart.destroy();
+        severityChart = null;
+      }
+
+      // 这段时间没有记录，提示一下
+      if (filtered.length === 0) {
+        noteEl.textContent = "所选时间段内没有记录。";
+        return;
+      }
+
+      const labels = filtered.map(function (d) { return d.date; });
+      const values = filtered.map(function (d) {
+        return d.overallSeverity == null ? null : d.overallSeverity;
+      });
+
+      const ctx = document.getElementById("severityChart").getContext("2d");
+      severityChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "严重程度（0-10）",
+            data: values,
+            borderColor: "#2c8cb0",
+            backgroundColor: "rgba(44, 140, 176, 0.12)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: "#2c8cb0"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              min: 0,
+              max: 10,
+              ticks: { stepSize: 1 }
+            },
+            x: {
+              ticks: { maxTicksLimit: 10 }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // 饼图：复发部位分布
+    function updateSiteChart() {
+      const noteEl = document.getElementById("statsNote");
+
+      if (siteChart) {
+        siteChart.destroy();
+        siteChart = null;
+      }
+
+      if (statsSites.length === 0) {
+        noteEl.textContent = "还没有复发部位记录。";
+        renderBodyMap({}); // 同时把人体图恢复成"无复发"的颜色
+        return;
+      }
+
+      // 统计每个部位出现过多少次
+      const counts = {};
+      statsSites.forEach(function (s) {
+        if (!counts[s.site]) {
+          counts[s.site] = 0;
+        }
+        counts[s.site]++;
+      });
+
+      // 按出现次数从多到少排序
+      const sorted = Object.keys(counts).map(function (site) {
+        return { site: site, count: counts[site] };
+      }).sort(function (a, b) {
+        return b.count - a.count;
+      });
+
+      const labels = sorted.map(function (item) { return item.site; });
+      const values = sorted.map(function (item) { return item.count; });
+      const palette = ["#2c8cb0", "#f2994a", "#6fcf97", "#bb6bd9", "#eb5757", "#56ccf2", "#9b51e0"];
+
+      const ctx = document.getElementById("siteChart").getContext("2d");
+      siteChart = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            backgroundColor: palette
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom"
+            }
+          }
+        }
+      });
+
+      // 同时更新右边的人体图（颜色越深 = 复发次数越多）
+      renderBodyMap(counts);
+    }
+
+    // 人体图：按每个部位的复发次数填充颜色深浅
+    function renderBodyMap(counts) {
+      // 先找出最多的次数，用来决定颜色深浅的比例
+      let maxCount = 0;
+      Object.keys(counts).forEach(function (site) {
+        if (counts[site] > maxCount) {
+          maxCount = counts[site];
+        }
+      });
+
+      // 每个部位对应 SVG 里的哪些区域
+      const regionMap = {
+        "面部": ["body-face"],
+        "颈部": ["body-neck"],
+        "躯干": ["body-torso"],
+        "四肢": ["body-leftArm", "body-rightArm", "body-leftLeg", "body-rightLeg"],
+        "手部": ["body-leftHand", "body-rightHand"],
+        "肘窝": ["body-leftElbow", "body-rightElbow"],
+        "腘窝": ["body-leftKnee", "body-rightKnee"]
+      };
+
+      Object.keys(regionMap).forEach(function (site) {
+        const count = counts[site] || 0;
+        const ratio = maxCount > 0 ? count / maxCount : 0;
+
+        // 次数越多，透明度越低（颜色越深）；没记录过的也留一点淡色做底
+        const alpha = count > 0 ? (0.18 + 0.78 * ratio) : 0.05;
+        const fill = "rgba(192, 57, 43, " + alpha + ")";
+
+        regionMap[site].forEach(function (shapeId) {
+          const shape = document.getElementById(shapeId);
+          shape.setAttribute("fill", fill);
+
+          // 更新鼠标悬停提示：显示这个部位复发过几次
+          const title = shape.querySelector("title");
+          if (title) {
+            title.textContent = site + "：" + count + " 次";
+          }
+        });
+      });
+    }
+
+    // 柱状图：每月复发次数
+    function updateMonthlyChart() {
+      const noteEl = document.getElementById("statsNote");
+
+      if (monthlyChart) {
+        monthlyChart.destroy();
+        monthlyChart = null;
+      }
+
+      // 统计每个月复发（relapse 为 true）的次数
+      const monthCounts = {};
+      statsDailies.forEach(function (d) {
+        const month = d.date.slice(0, 7); // 取 "年-月"
+        if (!monthCounts[month]) {
+          monthCounts[month] = 0;
+        }
+        if (d.relapse === true) {
+          monthCounts[month]++;
+        }
+      });
+
+      // 从最早记录的月份到最晚记录的月份，连续显示（没有复发的月份也显示 0）
+      const firstMonth = statsDailies[0].date.slice(0, 7);
+      const lastMonth = statsDailies[statsDailies.length - 1].date.slice(0, 7);
+
+      function toMonthKey(date) {
+        return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
+      }
+
+      function monthKeyToDate(monthKey) {
+        const parts = monthKey.split("-");
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+      }
+
+      const labels = [];
+      const values = [];
+      const cursor = monthKeyToDate(firstMonth);
+      const last = monthKeyToDate(lastMonth);
+
+      while (cursor <= last) {
+        const monthKey = toMonthKey(cursor);
+        labels.push(monthKey);
+        values.push(monthCounts[monthKey] || 0);
+        cursor.setMonth(cursor.getMonth() + 1); // 跳到下个月
+      }
+
+      const ctx = document.getElementById("monthlyChart").getContext("2d");
+      monthlyChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "复发次数",
+            data: values,
+            backgroundColor: "#f2994a",
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, precision: 0 }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // 销毁所有图表（数据为空时调用）
+    function destroyAllCharts() {
+      if (severityChart) {
+        severityChart.destroy();
+        severityChart = null;
+      }
+      if (siteChart) {
+        siteChart.destroy();
+        siteChart = null;
+      }
+      if (monthlyChart) {
+        monthlyChart.destroy();
+        monthlyChart = null;
+      }
+    }
+
+    // 时间段切换按钮：点哪个就画哪个时间段
+    document.querySelectorAll(".period-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".period-btn").forEach(function (b) {
+          b.classList.remove("active");
+        });
+        btn.classList.add("active");
+
+        if (statsDailies) {
+          updateSeverityChart(Number(btn.dataset.period));
+        }
+      });
+    });
+
+    // ============================================================
+    // 第九部分：诱因分析（食物 / 药物 / 补剂）
+    // ============================================================
+
+    // 给日期字符串加几天，返回新的 "年-月-日"
+    function addDays(dateStr, days) {
+      const parts = dateStr.split("-");
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      d.setDate(d.getDate() + days);
+      return dateToStr(d);
+    }
+
+    // 诱因分析主函数
+    async function renderTriggers() {
+      const listEl = document.getElementById("triggerList");
+      const noteEl = document.getElementById("triggerNote");
+
+      if (!db) {
+        noteEl.textContent = "数据库还没准备好，请稍后重试。";
+        return;
+      }
+
+      try {
+        const dailies = await getAllFromStore("daily_logs");
+        const foods = await getAllFromStore("food_logs");
+        const meds = await getAllFromStore("medication_logs");
+        const sups = await getAllFromStore("supplement_logs");
+
+        // 没有打卡记录就提示
+        if (dailies.length === 0) {
+          listEl.innerHTML = "";
+          noteEl.textContent = "还没有打卡记录，先坚持记录一段时间吧！";
+          return;
+        }
+
+        // 1. 建立"日期 -> 是否复发"的对照表
+        const relapseMap = {};
+        dailies.forEach(function (d) {
+          relapseMap[d.date] = (d.relapse === true);
+        });
+
+        // 所有打过卡、参与统计的日期（升序）
+        const allDates = dailies.map(function (d) { return d.date; }).sort();
+
+        // 2. 把记录整理成"每种东西用了哪些天"
+        //    食物没有"是否使用"字段，出现就是吃了
+        //    药物/补剂只有 used/taken 为 true 才算真正用了
+        const foodUseMap = buildUseMap(foods, null);
+        const medUseMap = buildUseMap(meds, "used");
+        const supUseMap = buildUseMap(sups, "taken");
+
+        // 3. 合并所有"东西"，逐个分析
+        const results = [];
+
+        Object.keys(foodUseMap).forEach(function (name) {
+          const result = analyzeTrigger(name, "食物", foodUseMap[name], relapseMap, allDates);
+          if (result) {
+            results.push(result);
+          }
+        });
+        Object.keys(medUseMap).forEach(function (name) {
+          const result = analyzeTrigger(name, "药物", medUseMap[name], relapseMap, allDates);
+          if (result) {
+            results.push(result);
+          }
+        });
+        Object.keys(supUseMap).forEach(function (name) {
+          const result = analyzeTrigger(name, "补剂", supUseMap[name], relapseMap, allDates);
+          if (result) {
+            results.push(result);
+          }
+        });
+
+        // 4. 按"差值"从大到小排序（差值越大越可疑）
+        results.sort(function (a, b) {
+          return b.diff - a.diff;
+        });
+
+        // 5. 渲染排行榜
+        listEl.innerHTML = "";
+        if (results.length === 0) {
+          noteEl.textContent = "还没有足够数据。每种食物/药物/补剂至少要使用 3 次才会进入排行榜。坚持每天打卡吧！";
+          return;
+        }
+
+        noteEl.textContent = "";
+        results.forEach(function (item, index) {
+          listEl.appendChild(buildTriggerItem(item, index + 1));
+        });
+      } catch (error) {
+        console.error(error);
+        noteEl.textContent = "分析失败，请按 F12 查看控制台报错。";
+      }
+    }
+
+    // 把记录表变成"名称 -> 使用日期数组"
+    // useField 为空表示没有勾选字段（食物），记录出现就算使用
+    function buildUseMap(records, useField) {
+      const map = {};
+      records.forEach(function (r) {
+        const used = useField ? (r[useField] === true) : true;
+        if (!used) {
+          return;
+        }
+        if (!map[r.name]) {
+          map[r.name] = [];
+        }
+        map[r.name].push(r.date);
+      });
+      return map;
+    }
+
+    // 分析一种东西：返回结果对象；数据不够时返回 null
+    function analyzeTrigger(name, type, useDates, relapseMap, allDates) {
+      // 同一天重复记录只算一次，并排序
+      const uniqueUseDates = [];
+      const seen = {};
+      useDates.forEach(function (d) {
+        if (!seen[d]) {
+          seen[d] = true;
+          uniqueUseDates.push(d);
+        }
+      });
+      uniqueUseDates.sort();
+
+      // 至少使用 3 次才进入分析
+      if (uniqueUseDates.length < 3) {
+        return null;
+      }
+
+      // --- 统计"使用后 1-3 天内复发"的比例 ---
+      let exposureCount = 0;    // 纳入统计的使用次数
+      let relapsedCount = 0;    // 其中 1-3 天内出现复发的次数
+
+      uniqueUseDates.forEach(function (useDate) {
+        let measurable = false; // 使用后的几天里有没有打过卡
+        let relapsed = false;   // 1-3 天内有没有复发过
+
+        for (let offset = 1; offset <= 3; offset++) {
+          const checkDate = addDays(useDate, offset);
+          if (relapseMap[checkDate] !== undefined) {
+            measurable = true;
+            if (relapseMap[checkDate]) {
+              relapsed = true;
+            }
+          }
+        }
+
+        // 如果使用后 1-3 天完全没有打卡，这次无法判断，不纳入统计
+        if (measurable) {
+          exposureCount++;
+          if (relapsed) {
+            relapsedCount++;
+          }
+        }
+      });
+
+      // --- 统计"没使用的日子里复发"的比例（对照组） ---
+      const absentSet = {};
+      allDates.forEach(function (d) {
+        absentSet[d] = true;
+      });
+      uniqueUseDates.forEach(function (d) {
+        delete absentSet[d]; // 使用日不算"未使用"
+      });
+
+      const absentDates = Object.keys(absentSet);
+      let absentCount = 0;
+      let absentRelapse = 0;
+      absentDates.forEach(function (d) {
+        absentCount++;
+        if (relapseMap[d]) {
+          absentRelapse++;
+        }
+      });
+
+      // 数据不足时不算（比如某种东西天天都用，没有"未使用"的日子）
+      if (exposureCount === 0 || absentCount === 0) {
+        return null;
+      }
+
+      const exposureRate = relapsedCount / exposureCount;
+      const baselineRate = absentRelapse / absentCount;
+      const diff = exposureRate - baselineRate;
+
+      return {
+        name: name,
+        type: type,
+        exposureCount: exposureCount,
+        relapsedCount: relapsedCount,
+        exposureRate: exposureRate,
+        baselineCount: absentCount,
+        baselineRelapse: absentRelapse,
+        baselineRate: baselineRate,
+        diff: diff
+      };
+    }
+
+    // 生成排行榜里的一行（含排名、对比条、说明文字）
+    function buildTriggerItem(item, rank) {
+      const row = document.createElement("div");
+      row.className = "trigger-item";
+
+      const diffPercent = Math.round(item.diff * 100);
+      const diffText = (diffPercent > 0 ? "+" : "") + diffPercent + "%";
+      const diffClass = diffPercent > 5
+        ? "diff-positive"
+        : (diffPercent < -5 ? "diff-negative" : "diff-neutral");
+      const typeClass = item.type === "食物"
+        ? "type-food"
+        : (item.type === "药物" ? "type-med" : "type-sup");
+
+      // 头部：排名 + 名称 + 类型 + 差值
+      const head = document.createElement("div");
+      head.className = "trigger-head";
+
+      const rankSpan = document.createElement("span");
+      rankSpan.className = "trigger-rank";
+      rankSpan.textContent = "#" + rank;
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "trigger-name";
+      nameSpan.textContent = item.name;
+
+      const typeSpan = document.createElement("span");
+      typeSpan.className = "trigger-type " + typeClass;
+      typeSpan.textContent = item.type;
+
+      const diffSpan = document.createElement("span");
+      diffSpan.className = "trigger-diff " + diffClass;
+      diffSpan.textContent = diffText;
+
+      head.appendChild(rankSpan);
+      head.appendChild(nameSpan);
+      head.appendChild(typeSpan);
+      head.appendChild(diffSpan);
+      row.appendChild(head);
+
+      // 两根对比条：使用后复发率 vs 未使用复发率
+      const bars = document.createElement("div");
+      bars.className = "trigger-bars";
+      bars.appendChild(buildBarRow("使用后复发", item.exposureRate, "bar-exposure"));
+      bars.appendChild(buildBarRow("未使用复发", item.baselineRate, "bar-baseline"));
+      row.appendChild(bars);
+
+      // 底部说明文字
+      const detail = document.createElement("div");
+      detail.className = "trigger-detail";
+      detail.textContent = "使用/食用 " + item.exposureCount + " 次，其中 " + item.relapsedCount +
+        " 次在 1–3 天内复发；未使用 " + item.baselineCount + " 天，其中 " + item.baselineRelapse + " 天复发。";
+      row.appendChild(detail);
+
+      return row;
+    }
+
+    // 生成一根"标签 + 进度条 + 百分比"的对比条
+    function buildBarRow(label, rate, fillClass) {
+      const row = document.createElement("div");
+      row.className = "bar-row";
+
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "bar-label";
+      labelSpan.textContent = label;
+
+      const track = document.createElement("div");
+      track.className = "bar-track";
+
+      const fill = document.createElement("div");
+      fill.className = "bar-fill " + fillClass;
+      fill.style.width = Math.round(rate * 100) + "%";
+
+      track.appendChild(fill);
+
+      const valueSpan = document.createElement("span");
+      valueSpan.className = "bar-value";
+      valueSpan.textContent = Math.round(rate * 100) + "%";
+
+      row.appendChild(labelSpan);
+      row.appendChild(track);
+      row.appendChild(valueSpan);
+      return row;
+    }
+
+    // ============================================================
+    // 第十部分：提示消息
+    // ============================================================
+
+    let messageTimer = null;
+
+    function showMessage(text, type) {
+      const messageBox = document.getElementById("message");
+      messageBox.textContent = text;
+      messageBox.className = "message " + type;
+      messageBox.style.display = "block";
+
+      // 3.5 秒后自动隐藏消息
+      clearTimeout(messageTimer);
+      messageTimer = setTimeout(function () {
+        messageBox.style.display = "none";
+      }, 3500);
+    }
+
+    // ============================================================
+    // 第十一部分：每日提醒（Notification API）
+    // ============================================================
+
+    // 提醒开关状态存在 localStorage（浏览器的小存储，刷新后不丢）
+    const REMINDER_KEY = "reminder_enabled";
+    let reminderTimer = null;          // 定时检查器
+    let reminderNotifiedDate = "";     // 记录"今天是否已经提醒过"
+
+    // 页面加载时恢复提醒开关
+    function loadReminderState() {
+      const toggle = document.getElementById("reminderToggle");
+      const saved = localStorage.getItem(REMINDER_KEY);
+      toggle.checked = (saved === "true");
+
+      // 之前开过：如果权限还在，就直接启动定时器
+      if (toggle.checked && "Notification" in window && Notification.permission === "granted") {
+        startReminderTimer();
+      }
+
+      updateReminderStatus();
+    }
+
+    // 开关被点击时触发
+    document.getElementById("reminderToggle").addEventListener("change", function () {
+      if (this.checked) {
+        turnOnReminder();
+      } else {
+        turnOffReminder();
+      }
+    });
+
+    // 开启提醒
+    function turnOnReminder() {
+      // 1. 浏览器不支持通知
+      if (!("Notification" in window)) {
+        document.getElementById("reminderToggle").checked = false;
+        updateReminderStatus();
+        showMessage("当前浏览器不支持通知功能", "error");
+        return;
+      }
+
+      // 2. 之前已经允许过通知
+      if (Notification.permission === "granted") {
+        localStorage.setItem(REMINDER_KEY, "true");
+        startReminderTimer();
+        updateReminderStatus();
+        showMessage("提醒已开启：每天 20:00 提醒你记录", "success");
+        return;
+      }
+
+      // 3. 之前被拒绝过：只能去浏览器设置里改回来
+      if (Notification.permission === "denied") {
+        localStorage.setItem(REMINDER_KEY, "false");
+        document.getElementById("reminderToggle").checked = false;
+        updateReminderStatus();
+        showMessage("通知权限被拒绝，请在浏览器设置中允许后重试", "error");
+        return;
+      }
+
+      // 4. 第一次使用：向浏览器请求通知权限（必须由用户点击触发）
+      Notification.requestPermission().then(function (permission) {
+        if (permission === "granted") {
+          localStorage.setItem(REMINDER_KEY, "true");
+          startReminderTimer();
+          updateReminderStatus();
+          showMessage("提醒已开启：每天 20:00 提醒你记录", "success");
+        } else {
+          localStorage.setItem(REMINDER_KEY, "false");
+          document.getElementById("reminderToggle").checked = false;
+          updateReminderStatus();
+          showMessage("没有允许通知，提醒未开启", "error");
+        }
+      });
+    }
+
+    // 关闭提醒
+    function turnOffReminder() {
+      localStorage.setItem(REMINDER_KEY, "false");
+      if (reminderTimer) {
+        clearInterval(reminderTimer);
+        reminderTimer = null;
+      }
+      reminderNotifiedDate = "";
+      updateReminderStatus();
+      showMessage("提醒已关闭", "success");
+    }
+
+    // 启动定时检查：先立刻检查一次，然后每 30 秒检查一次
+    function startReminderTimer() {
+      if (reminderTimer) {
+        clearInterval(reminderTimer);
+      }
+      checkReminderTime();
+      reminderTimer = setInterval(checkReminderTime, 30000);
+    }
+
+    // 检查当前时间：到 20:00（或已过 20:00）就提醒一次
+    function checkReminderTime() {
+      const today = getToday();
+
+      // 今天已经提醒过就不重复提醒
+      if (reminderNotifiedDate === today) {
+        return;
+      }
+
+      const now = new Date();
+      if (now.getHours() >= 20) {
+        reminderNotifiedDate = today;
+        showNotification();
+      }
+    }
+
+    // 弹出浏览器通知
+    function showNotification() {
+      if (!("Notification" in window) || Notification.permission !== "granted") {
+        return;
+      }
+
+      const notification = new Notification("特应性皮炎记录工具", {
+        body: "20:00 啦，记得记录今天的皮肤状态！"
+      });
+
+      // 点击通知时，把页面带到前台
+      notification.onclick = function () {
+        window.focus();
+        notification.close();
+      };
+    }
+
+    // 页面打开时恢复提醒设置
+    loadReminderState();
+
+    // ============================================================
+    // 第十二部分：数据导出备份
+    // ============================================================
+
+    // 导出按钮
+    document.getElementById("exportBtn").addEventListener("click", exportAllData);
+
+    // 主函数：读取全部数据，打包成 JSON，保存为 AD-data.json
+    async function exportAllData() {
+      if (!db) {
+        showMessage("数据库还没准备好，请稍后再试", "error");
+        return;
+      }
+
+      try {
+        // 1. 读取所有表的数据
+        const storeNames = [
+          "daily_logs",
+          "lesion_records",
+          "medication_logs",
+          "supplement_logs",
+          "food_logs",
+          "factor_logs"
+        ];
+
+        const data = {};
+        for (let i = 0; i < storeNames.length; i++) {
+          data[storeNames[i]] = await getAllFromStore(storeNames[i]);
+        }
+
+        // 2. 统计一共多少条记录
+        let total = 0;
+        storeNames.forEach(function (name) {
+          total += data[name].length;
+        });
+
+        // 3. 打包成备份文件内容（带上时间、版本、提醒设置，方便以后导入）
+        const backup = {
+          app: "ad_tracker",
+          exportedAt: new Date().toISOString(),
+          version: DB_VERSION,
+          settings: {
+            reminderEnabled: localStorage.getItem(REMINDER_KEY) === "true"
+          },
+          data: data
+        };
+
+        const json = JSON.stringify(backup, null, 2);
+
+        // 4. 优先用"另存为"对话框：可以自己选择保存位置（比如 D 盘）
+        if ("showSaveFilePicker" in window) {
+          try {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: "AD-data.json",
+              types: [{
+                description: "JSON 备份文件",
+                accept: { "application/json": [".json"] }
+              }]
+            });
+
+            const writable = await handle.createWritable();
+            await writable.write(json);
+            await writable.close();
+
+            showMessage("备份已保存：AD-data.json（共 " + total + " 条记录）", "success");
+            return;
+          } catch (error) {
+            // 用户点了"取消"就不提示；其他错误走下面的普通下载
+            if (error.name === "AbortError") {
+              return;
+            }
+            console.warn("另存为失败，改用普通下载：", error);
+          }
+        }
+
+        // 5. 普通下载：保存到浏览器默认下载文件夹
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "AD-data.json";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showMessage("备份文件 AD-data.json 已下载（共 " + total + " 条记录），请到浏览器下载文件夹查看", "success");
+      } catch (error) {
+        console.error(error);
+        showMessage("导出失败，请按 F12 查看控制台报错", "error");
+      }
+    }
+
+    // ============================================================
+    // 第十三部分：注册 Service Worker（PWA 离线缓存）
+    // 注意：直接双击打开本地文件（file://）时不会注册，
+    // 只有通过网址访问（https:// 或 localhost）才会生效
+    // ============================================================
+
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./sw.js").catch(function (error) {
+          console.warn("Service Worker 注册失败：", error);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
