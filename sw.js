@@ -3,7 +3,7 @@
 // 作用：网页被"安装"到手机/电脑桌面后，即使没有网络也能打开
 // ============================================================
 
-const CACHE_NAME = "ad-tracker-v6";
+const CACHE_NAME = "ad-tracker-v7";
 const APP_SHELL = [
   "./",
   "./index.html",

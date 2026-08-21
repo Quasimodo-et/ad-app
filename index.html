@@ -328,12 +328,21 @@
 
     /* ===== 提示消息 ===== */
     .message {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: calc(100% - 32px);
+      max-width: 420px;
       text-align: center;
-      padding: 13px;
+      padding: 13px 16px;
       border-radius: 12px;
       margin-bottom: 16px;
       display: none;
       font-size: 15px;
+      box-shadow: 0 8px 24px rgba(20, 60, 80, 0.18);
+      pointer-events: none;
     }
 
     .message.success {
@@ -837,6 +846,17 @@
         <div class="modal-title" id="saveModalTitle">保存成功！</div>
         <div class="modal-text" id="saveModalText">今天的记录已存入浏览器</div>
         <button type="button" class="btn-primary" id="saveModalOk">知道了</button>
+      </div>
+    </div>
+
+    <!-- 导出备份备用弹窗（手机上分享面板没弹出来时使用） -->
+    <div id="exportModal" class="modal-overlay">
+      <div class="modal-box">
+        <div class="modal-check">📦</div>
+        <div class="modal-title">导出备份</div>
+        <div class="modal-text">如果手机上没弹出保存选项，请点下面的按钮复制备份内容，然后粘贴到“备忘录”或微信里保存。</div>
+        <button type="button" class="btn-primary" id="copyBackupBtn">📋 复制备份内容</button>
+        <button type="button" class="btn-secondary" id="exportModalClose" style="margin-top:10px;">关闭</button>
       </div>
     </div>
 
@@ -2821,6 +2841,61 @@
     // 第十二部分：数据导出备份
     // ============================================================
 
+    // 最近一次生成的备份内容（供手机上的"复制备份内容"备用方案使用）
+    let lastExportJson = null;
+
+    // 打开"复制备份内容"备用弹窗
+    function showExportModal() {
+      document.getElementById("exportModal").classList.add("show");
+    }
+
+    // 关闭备用弹窗
+    document.getElementById("exportModalClose").addEventListener("click", function () {
+      document.getElementById("exportModal").classList.remove("show");
+    });
+
+    // 把文本复制到剪贴板（兼容各种手机）
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (error) {
+          console.warn("剪贴板 API 失败：", error);
+        }
+      }
+      // 备用方案：临时文本框 + 系统复制命令
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      let ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } catch (error) {
+        console.warn("备用复制失败：", error);
+      }
+      document.body.removeChild(textarea);
+      return ok;
+    }
+
+    // "复制备份内容"按钮
+    document.getElementById("copyBackupBtn").addEventListener("click", async function () {
+      if (!lastExportJson) {
+        showMessage("还没有备份内容，请先点一次导出", "error");
+        return;
+      }
+      const ok = await copyTextToClipboard(lastExportJson);
+      if (ok) {
+        document.getElementById("exportModal").classList.remove("show");
+        showMessage("备份内容已复制！请粘贴到备忘录或微信保存", "success");
+      } else {
+        showMessage("复制失败，请改用电脑导出", "error");
+      }
+    });
+
     // 导出按钮
     document.getElementById("exportBtn").addEventListener("click", exportAllData);
 
@@ -2865,6 +2940,8 @@
         };
 
         const json = JSON.stringify(backup, null, 2);
+        // 保存一份，供手机上的"复制备份内容"备用方案使用
+        lastExportJson = json;
 
         // 4. 优先用"另存为"对话框：可以自己选择保存位置（比如 D 盘）
         if ("showSaveFilePicker" in window) {
@@ -2895,10 +2972,13 @@
         // 5. 保存/下载备份文件（先试手机通用的"系统分享"方式）
         const blob = new Blob([json], { type: "application/json" });
         const fileName = "AD-data.json";
+        // 记录当前是不是手机：手机上如果分享面板没弹出来，改用"复制备份内容"
+        let isMobileShare = false;
 
         // 苹果/安卓手机：调用系统"分享"面板，
         // 可以存到"文件"App、发微信、发邮件等，最稳妥
         if (navigator.canShare && navigator.share) {
+          isMobileShare = true;
           const file = new File([blob], fileName, { type: "application/json" });
           if (navigator.canShare({ files: [file] })) {
             try {
@@ -2914,7 +2994,7 @@
               if (error.name === "AbortError") {
                 return;
               }
-              console.warn("分享失败，改用普通下载：", error);
+              console.warn("分享失败，改用备用方案：", error);
             }
           }
         }
@@ -2932,7 +3012,12 @@
           URL.revokeObjectURL(url);
         }, 10000);
 
-        showMessage("备份文件 AD-data.json 已下载（共 " + total + " 条记录），请到浏览器下载文件夹查看", "success");
+        // 手机上：如果上面的分享面板没弹出来，就弹出"复制备份内容"备用弹窗
+        if (isMobileShare) {
+          showExportModal();
+        } else {
+          showMessage("备份文件 AD-data.json 已下载（共 " + total + " 条记录），请到浏览器下载文件夹查看", "success");
+        }
       } catch (error) {
         console.error(error);
         showMessage("导出失败，请按 F12 查看控制台报错", "error");
