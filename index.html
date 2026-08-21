@@ -983,7 +983,7 @@
       <!-- 数据备份 -->
       <div class="card">
         <h2>💾 数据备份</h2>
-        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。<br>手机上导出时，会弹出系统分享面板，选择“存储到文件”即可保存。<br><strong>当前版本：v10</strong></p>
+        <p class="reminder-tip">把所有记录打包成一个文件（AD-data.json）。换电脑或清理浏览器缓存之前，先备份一份更安心。<br>手机上导出时，会弹出系统分享面板，选择“存储到文件”即可保存。<br><strong>当前版本：v11</strong></p>
         <button type="button" id="exportBtn" class="btn-secondary" onclick="if (!window.__mainExportBound) { window.__fallbackExport(); }">📤 导出备份文件（AD-data.json）</button>
       </div>
 
@@ -1142,7 +1142,7 @@
 
   <footer>
     数据只保存在你自己的浏览器里，不会上传到任何服务器。<br>
-    <span style="color:#9ab3bf; font-size:12px;">版本 v10</span>
+    <span style="color:#9ab3bf; font-size:12px;">版本 v11</span>
   </footer>
 
   <!-- Chart.js 图表库：通过 CDN 引入，需要联网才能加载 -->
@@ -3144,6 +3144,81 @@
         alert("导出出错：" + (error && error.message ? error.message : "未知错误"));
       }
     };
+  </script>
+
+  <script>
+    // ============================================================
+    // 自动检查更新（独立小脚本）
+    // 作用：每次打开 App 时，自动向 GitHub 查询最新版本号。
+    // 如果发现新版本，就在顶部显示蓝色横幅"发现新版本，点立即刷新"，
+    // 点击后直接加载新版——以后更新功能，不用再删除桌面图标了。
+    // ============================================================
+
+    // 当前页面的版本号（每次发布新版时，要同步改成最新版）
+    window.__CURRENT_VER = "v11";
+
+    (function checkForUpdate() {
+      try {
+        // 读取 version.txt（加随机参数，防止浏览器用旧缓存）
+        fetch("./version.txt?v=" + Date.now(), { cache: "no-store" })
+          .then(function (response) {
+            return response.ok ? response.text() : "";
+          })
+          .then(function (text) {
+            const latest = (text || "").trim();
+            if (latest && latest !== window.__CURRENT_VER) {
+              showUpdateBanner(latest);
+            }
+          })
+          .catch(function () {
+            // 没网或读取失败时忽略，不打扰用户
+          });
+      } catch (error) {
+        // 忽略任何意外错误
+      }
+    })();
+
+    // 在页面顶部显示"发现新版本"的蓝色横幅
+    function showUpdateBanner(latest) {
+      const banner = document.createElement("div");
+      banner.id = "updateBanner";
+      banner.style.position = "fixed";
+      banner.style.top = "0";
+      banner.style.left = "0";
+      banner.style.right = "0";
+      banner.style.zIndex = "2000";
+      banner.style.background = "#2c8cb0";
+      banner.style.color = "#ffffff";
+      banner.style.padding = "12px 16px";
+      banner.style.display = "flex";
+      banner.style.justifyContent = "space-between";
+      banner.style.alignItems = "center";
+      banner.style.gap = "12px";
+      banner.style.fontSize = "14px";
+      banner.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+
+      const text = document.createElement("span");
+      text.textContent = "发现新版本 " + latest + "，点击刷新即可加载";
+
+      const button = document.createElement("button");
+      button.textContent = "立即刷新";
+      button.style.background = "#ffffff";
+      button.style.color = "#1f6f8b";
+      button.style.border = "none";
+      button.style.borderRadius = "8px";
+      button.style.padding = "8px 14px";
+      button.style.fontWeight = "bold";
+      button.style.cursor = "pointer";
+
+      // 点击后：用带版本号的网址刷新，绕开旧缓存，加载新版
+      button.onclick = function () {
+        location.href = "./index.html?v=" + encodeURIComponent(latest);
+      };
+
+      banner.appendChild(text);
+      banner.appendChild(button);
+      document.body.appendChild(banner);
+    }
   </script>
 </body>
 </html>
